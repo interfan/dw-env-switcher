@@ -2,19 +2,21 @@
   "name": "dw-env-switcher",
   "displayName": "DW Environment Switcher",
   "description": "Switch and manage Salesforce sandbox environments easily with global credential storage.",
-  "version": "0.0.4",
-  "publisher": "Ivaylo Ivanov Trepetanov",
+  "version": "0.0.8",
+  "publisher": "IvayloTrepetanov",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-github-username/dw-env-switcher.git"
-  }
+    "url": "https://github.com/interfan/dw-env-switcher"
+  },
+  "license": "MIT",
+  "icon": "icon.png",
+  "main": "./out/extension.js",
   "engines": {
     "vscode": "^1.80.0"
   },
   "categories": [
     "Other",
-    "Deployment",
-    "Tools"
+    "Debuggers"
   ],
   "activationEvents": [
     "onCommand:dw-env-switcher.selectSandbox",
@@ -22,7 +24,6 @@
     "onCommand:dw-env-switcher.deleteSavedUsername",
     "onCommand:dw-env-switcher.deleteSavedSandbox"
   ],
-  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
