@@ -1,0 +1,56 @@
+{
+  "name": "dw-env-switcher",
+  "displayName": "DW Environment Switcher",
+  "description": "Switch and manage Salesforce sandbox environments easily with global credential storage.",
+  "version": "0.0.4",
+  "publisher": "Ivaylo Ivanov Trepetanov",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-github-username/dw-env-switcher.git"
+  }
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other",
+    "Deployment",
+    "Tools"
+  ],
+  "activationEvents": [
+    "onCommand:dw-env-switcher.selectSandbox",
+    "onCommand:dw-env-switcher.selectSandboxWithDetails",
+    "onCommand:dw-env-switcher.deleteSavedUsername",
+    "onCommand:dw-env-switcher.deleteSavedSandbox"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "dw-env-switcher.selectSandbox",
+        "title": "Select Sandbox"
+      },
+      {
+        "command": "dw-env-switcher.selectSandboxWithDetails",
+        "title": "Select Sandbox with Details"
+      },
+      {
+        "command": "dw-env-switcher.deleteSavedUsername",
+        "title": "Delete Saved Username"
+      },
+      {
+        "command": "dw-env-switcher.deleteSavedSandbox",
+        "title": "Delete Saved Sandbox"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0"
+  }
+}
