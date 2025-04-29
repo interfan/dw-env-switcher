@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
+const archiver = require('archiver');
 
 interface SandboxConfig {
     name: string;
@@ -28,10 +29,20 @@ export function activate(context: vscode.ExtensionContext) {
         await deleteSavedSandbox(context);
     });
 
+    let disposableExport = vscode.commands.registerCommand('dw-env-switcher.exportSetup', async () => {
+        await exportSetup(context);
+    });
+
+    let disposableImport = vscode.commands.registerCommand('dw-env-switcher.importSetup', async () => {
+        await importSetup(context);
+    });
+
     context.subscriptions.push(disposableSimple);
     context.subscriptions.push(disposableAdvanced);
     context.subscriptions.push(disposableDeleteUser);
     context.subscriptions.push(disposableDeleteSandbox);
+    context.subscriptions.push(disposableExport);
+    context.subscriptions.push(disposableImport);
 }
 
 // Helper function to extract the folder name from the full directory path
@@ -440,6 +451,145 @@ async function deleteSavedSandbox(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage(`Deleted sandbox '${sandboxNameToDelete}' from dw-envs.json.`);
     } catch (error) {
         vscode.window.showErrorMessage('Error deleting saved sandbox: ' + (error as Error).message);
+    }
+}
+
+async function exportSetup(context: vscode.ExtensionContext) {
+    try {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        
+        // Check if workspaceFolders is undefined or empty
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+            vscode.window.showErrorMessage('No workspace is open.');
+            return;
+        }
+
+        // Now TypeScript knows that workspaceFolders is not undefined and has at least one element
+        const workspacePath = workspaceFolders[0].uri.fsPath;  // Safe to access workspaceFolders[0]
+        const dwFilePath = path.join(workspacePath, 'dw.json');
+        const envFilePath = path.join(workspacePath, 'dw-envs.json');
+
+        if (!fs.existsSync(dwFilePath) || !fs.existsSync(envFilePath)) {
+            vscode.window.showErrorMessage('dw.json or dw-envs.json is missing in the workspace.');
+            return;
+        }
+
+        // Export global state variables (username, password, etc.)
+        const globalState = {
+            'dw-username': context.globalState.get('dw-username'),
+            'dw-password': context.globalState.get('dw-password'),
+            'dw-hostnames': context.globalState.get('dw-hostnames'),
+            'dw-usernames': context.globalState.get('dw-usernames'),
+            'dw-codeversions': context.globalState.get('dw-codeversions'),
+        };
+
+        // Prompt user for export location (a folder or a zip file)
+        const exportLocation = await vscode.window.showOpenDialog({
+            canSelectFolders: true,
+            canSelectMany: false,
+            openLabel: 'Select Export Folder'
+        });
+
+        if (!exportLocation) {
+            vscode.window.showErrorMessage('No export location selected.');
+            return;
+        }
+
+        const exportFolder = exportLocation[0].fsPath;
+        const zipPath = path.join(exportFolder, 'sandbox_config.zip');
+
+        // Create a zip file containing the configuration files and global state
+        const output = fs.createWriteStream(zipPath);
+        const archive = archiver('zip', { zlib: { level: 9 } });
+
+        output.on('close', () => {
+            vscode.window.showInformationMessage(`Export successful! Files are saved in ${zipPath}`);
+        });
+
+        // Handle errors in the archiver process
+        archive.on('error', (err: Error) => {  // Explicitly typing `err` as `Error`
+            vscode.window.showErrorMessage(`Error during export: ${err.message}`);
+        });
+
+        archive.pipe(output);
+        archive.file(dwFilePath, { name: 'dw.json' });
+        archive.file(envFilePath, { name: 'dw-envs.json' });
+
+        // Export global state as JSON
+        archive.append(JSON.stringify(globalState, null, 4), { name: 'globalState.json' });
+
+        archive.finalize();
+    } catch (error) {
+        vscode.window.showErrorMessage('Error exporting setup: ' + (error as Error).message);
+    }
+}
+
+async function importSetup(context: vscode.ExtensionContext) {
+    try {
+        // Prompt user to select the zip file for import
+        const zipLocation = await vscode.window.showOpenDialog({
+            canSelectFiles: true,
+            canSelectMany: false,
+            filters: { 'Zip Files': ['zip'] },
+            openLabel: 'Select Zip File for Import'
+        });
+
+        if (!zipLocation) {
+            vscode.window.showErrorMessage('No zip file selected.');
+            return;
+        }
+
+        const zipPath = zipLocation[0].fsPath;
+
+        const extractFolder = path.dirname(zipPath);  // Extract to the same folder
+
+        // Extract the zip file
+        const unzipper = require('unzipper');
+        fs.createReadStream(zipPath)
+            .pipe(unzipper.Extract({ path: extractFolder }))
+            .on('close', async () => {
+                // After extraction, check if dw.json and dw-envs.json exist
+                const dwFilePath = path.join(extractFolder, 'dw.json');
+                const envFilePath = path.join(extractFolder, 'dw-envs.json');
+                const globalStatePath = path.join(extractFolder, 'globalState.json');
+
+                if (fs.existsSync(dwFilePath) && fs.existsSync(envFilePath) && fs.existsSync(globalStatePath)) {
+                    // Prompt user to overwrite the existing files in the workspace
+                    const workspaceFolders = vscode.workspace.workspaceFolders;
+                    
+                    // Ensure workspaceFolders is not undefined or empty
+                    if (!workspaceFolders || workspaceFolders.length === 0) {
+                        vscode.window.showErrorMessage('No workspace is open.');
+                        return;
+                    }
+
+                    const workspacePath = workspaceFolders[0].uri.fsPath;
+
+                    // Overwrite files in the workspace
+                    fs.copyFileSync(dwFilePath, path.join(workspacePath, 'dw.json'));
+                    fs.copyFileSync(envFilePath, path.join(workspacePath, 'dw-envs.json'));
+
+                    // Read global state file and restore values
+                    const globalStateContent = fs.readFileSync(globalStatePath, 'utf-8');
+                    const globalState = JSON.parse(globalStateContent);
+
+                    await context.globalState.update('dw-username', globalState['dw-username']);
+                    await context.globalState.update('dw-password', globalState['dw-password']);
+                    await context.globalState.update('dw-hostnames', globalState['dw-hostnames']);
+                    await context.globalState.update('dw-usernames', globalState['dw-usernames']);
+                    await context.globalState.update('dw-codeversions', globalState['dw-codeversions']);
+
+                    vscode.window.showInformationMessage('Workspace setup has been successfully updated with the imported files.');
+                } else {
+                    vscode.window.showErrorMessage('Invalid zip file. Missing dw.json, dw-envs.json, or globalState.json.');
+                }
+            })
+            // Explicitly typing `err` as `Error`
+            .on('error', (err: Error) => {
+                vscode.window.showErrorMessage(`Error during import: ${err.message}`);
+            });
+    } catch (error) {
+        vscode.window.showErrorMessage('Error importing setup: ' + (error as Error).message);
     }
 }
 
