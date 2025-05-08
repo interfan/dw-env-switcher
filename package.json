@@ -2,7 +2,7 @@
     "name": "dw-env-switcher",
     "displayName": "DW Environment Switcher",
     "description": "Easily switch and manage Salesforce sandbox environments, store credentials securely, and export/import setups.",
-    "version": "0.1.6",
+    "version": "0.1.9",
     "publisher": "IvayloTrepetanov",
     "repository": {
         "type": "git",
@@ -141,7 +141,7 @@
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
         "watch": "tsc -w -p ./",
-        "bundle": "esbuild src/extension.ts --bundle --platform=node --outfile=out/extension.js"
+        "bundle": "esbuild src/extension.ts --bundle --platform=node --outfile=out/extension.js --external:vscode --external:@aws-sdk/client-s3"
     },
     "devDependencies": {
         "@types/archiver": "^6.0.3",
