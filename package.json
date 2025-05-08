@@ -2,7 +2,7 @@
   "name": "dw-env-switcher",
   "displayName": "DW Environment Switcher",
   "description": "Switch and manage Salesforce sandbox environments easily with global credential storage.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "IvayloTrepetanov",
   "repository": {
     "type": "git",
@@ -19,15 +19,52 @@
     "Debuggers"
   ],
   "activationEvents": [
-      "onCommand:dw-env-switcher.selectSandbox",
-      "onCommand:dw-env-switcher.selectSandboxWithDetails",
-      "onCommand:dw-env-switcher.deleteSavedUsername",
-      "onCommand:dw-env-switcher.deleteSavedSandbox",
-      "onCommand:dw-env-switcher.exportSetup",
-      "onCommand:dw-env-switcher.importSetup",
-      "onCommand:dw-env-switcher.switchCodeVersion"
+    "onCommand:dw-env-switcher.selectSandbox",
+    "onCommand:dw-env-switcher.selectSandboxWithDetails",
+    "onCommand:dw-env-switcher.deleteSavedUsername",
+    "onCommand:dw-env-switcher.deleteSavedSandbox",
+    "onCommand:dw-env-switcher.exportSetup",
+    "onCommand:dw-env-switcher.importSetup",
+    "onCommand:dw-env-switcher.switchCodeVersion",
+    "onCommand:dw-env-switcher.addNewSandbox",
+    "onCommand:dw-env-switcher.changeCartridges",
+    "onCommand:dw-env-switcher.changeUser",
+    "onCommand:dw-env-switcher.deleteSandboxFromView"
   ],
   "contributes": {
+    "menus": {
+      "view/title": [
+        {
+          "command": "dw-env-switcher.addNewSandbox",
+          "when": "view == dwEnvSwitcherView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "dw-env-switcher.sandboxActions",
+          "when": "view == dwEnvSwitcherView && viewItem == sandbox",
+          "group": "inline"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "dwEnvSwitcher",
+          "title": "DW Environment Switcher",
+          "icon": "icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "dwEnvSwitcher": [
+        {
+          "id": "dwEnvSwitcherView",
+          "name": "Sandboxes"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "dw-env-switcher.selectSandbox",
@@ -35,11 +72,23 @@
       },
       {
         "command": "dw-env-switcher.selectSandboxWithDetails",
-        "title": "Select Sandbox with Details"
+        "title": "Edit Sandbox"
       },
       {
-        "command": "dw-env-switcher.deleteSavedUsername",
-        "title": "Delete Saved Username"
+        "command": "dw-env-switcher.changeCartridges",
+        "title": "Change Cartridges"
+      },
+      {
+        "command": "dw-env-switcher.switchCodeVersion",
+        "title": "Change Code Version"
+      },
+      {
+        "command": "dw-env-switcher.changeUser",
+        "title": "Change User"
+      },
+      {
+        "command": "dw-env-switcher.deleteSandboxFromView",
+        "title": "Delete Sandbox"
       },
       {
         "command": "dw-env-switcher.deleteSavedSandbox",
@@ -54,8 +103,12 @@
         "title": "Import Sandbox Setup"
       },
       {
-        "command": "dw-env-switcher.switchCodeVersion",
-        "title": "Switch Current Sandbox Code Version"
+        "command": "dw-env-switcher.addNewSandbox",
+        "title": "Add New Sandbox"
+      },
+      {
+        "command": "dw-env-switcher.sandboxActions",
+        "title": "Sandbox Actions"
       }
     ]
   },
