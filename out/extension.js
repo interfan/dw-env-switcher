@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SandboxItem = exports.SandboxTreeDataProvider = void 0;
+exports.SandboxDetailItem = exports.SandboxItem = exports.SandboxTreeDataProvider = void 0;
 exports.pickOrEnter = pickOrEnter;
 exports.simpleSandboxSelection = simpleSandboxSelection;
 exports.detailedSandboxSelection = detailedSandboxSelection;
@@ -182,29 +182,82 @@ class SandboxTreeDataProvider {
     getTreeItem(element) {
         return element;
     }
-    async getChildren() {
-        var _a, _b;
-        const fs = require('fs');
-        const path = require('path');
+    async getChildren(element) {
+        var _a, _b, _c, _d, _e;
         const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
         if (!workspace)
             return [];
         const envPath = path.join(workspace, 'dw-envs.json');
+        const dwPath = path.join(workspace, 'dw.json');
         if (!fs.existsSync(envPath))
             return [];
         const sandboxes = JSON.parse(fs.readFileSync(envPath, 'utf-8')).sandboxes;
-        return sandboxes.map((sb) => new SandboxItem(sb));
+        let activeSandboxName = undefined;
+        if (fs.existsSync(dwPath)) {
+            const active = JSON.parse(fs.readFileSync(dwPath, 'utf-8'));
+            activeSandboxName = active.name;
+        }
+        // No parent -> top level -> list sandboxes
+        if (!element) {
+            return sandboxes.map(sb => new SandboxItem(sb, activeSandboxName));
+        }
+        // Has parent -> sandbox expanded -> show sandbox details
+        const details = [];
+        const hostnameItem = new SandboxDetailItem(`Hostname`);
+        hostnameItem.description = element.sandbox.hostname;
+        hostnameItem.tooltip = element.sandbox.hostname;
+        details.push(hostnameItem);
+        const usernameItem = new SandboxDetailItem(`Username`);
+        usernameItem.description = (_c = element.sandbox.username) !== null && _c !== void 0 ? _c : '(none)';
+        usernameItem.tooltip = (_d = element.sandbox.username) !== null && _d !== void 0 ? _d : '(none)';
+        details.push(usernameItem);
+        const codeVersionItem = new SandboxDetailItem(`Code Version`);
+        codeVersionItem.description = element.sandbox["code-version"];
+        codeVersionItem.tooltip = element.sandbox["code-version"];
+        details.push(codeVersionItem);
+        if ((_e = element.sandbox.cartridges) === null || _e === void 0 ? void 0 : _e.length) {
+            details.push(new SandboxDetailItem(`Cartridges:`));
+            element.sandbox.cartridges.forEach(cart => {
+                const cartItem = new SandboxDetailItem(`   - ${cart}`);
+                cartItem.tooltip = cart;
+                details.push(cartItem);
+            });
+        }
+        else {
+            details.push(new SandboxDetailItem(`Cartridges: (none)`));
+        }
+        return details;
     }
 }
 exports.SandboxTreeDataProvider = SandboxTreeDataProvider;
 class SandboxItem extends vscode.TreeItem {
-    constructor(sandbox) {
-        super(sandbox.name, vscode.TreeItemCollapsibleState.None);
+    constructor(sandbox, activeSandboxName) {
+        var _a;
+        super(sandbox.name, vscode.TreeItemCollapsibleState.Collapsed);
         this.sandbox = sandbox;
         this.contextValue = 'sandbox';
+        this.tooltip = `Hostname: ${sandbox.hostname}\nUsername: ${(_a = sandbox.username) !== null && _a !== void 0 ? _a : '(none)'}\nCode Version: ${sandbox["code-version"]}`;
+        if (sandbox.name === activeSandboxName) {
+            this.iconPath = new vscode.ThemeIcon("check", new vscode.ThemeColor("testing.iconPassed"));
+        }
+        else {
+            this.iconPath = new vscode.ThemeIcon("circle-slash", new vscode.ThemeColor("problemsErrorIcon.foreground"));
+            this.label = `${sandbox.name}`;
+        }
+        this.command = {
+            command: 'dw-env-switcher.activateSandbox',
+            title: 'Activate Sandbox',
+            arguments: [this.sandbox]
+        };
     }
 }
 exports.SandboxItem = SandboxItem;
+class SandboxDetailItem extends vscode.TreeItem {
+    constructor(label) {
+        super(label, vscode.TreeItemCollapsibleState.None);
+    }
+}
+exports.SandboxDetailItem = SandboxDetailItem;
 async function exportSetup(context) {
     var _a, _b;
     const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
@@ -434,9 +487,19 @@ async function sandboxActions(context, item) {
             break;
     }
 }
+async function activateSandbox(sandbox) {
+    var _a, _b;
+    const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
+    if (!workspace)
+        return;
+    const dwPath = path.join(workspace, 'dw.json');
+    fs.writeFileSync(dwPath, JSON.stringify(sandbox, null, 4));
+    vscode.window.showInformationMessage(`Activated sandbox: ${sandbox.name}`);
+    vscode.commands.executeCommand('dwEnvSwitcherView.refresh');
+}
 function activate(context) {
     const sandboxProvider = new SandboxTreeDataProvider(context);
     vscode.window.registerTreeDataProvider('dwEnvSwitcherView', sandboxProvider);
-    context.subscriptions.push(vscode.commands.registerCommand('dw-env-switcher.selectSandbox', () => simpleSandboxSelection(context)), vscode.commands.registerCommand('dw-env-switcher.selectSandboxWithDetails', (sandboxName) => detailedSandboxSelection(context, sandboxName)), vscode.commands.registerCommand('dw-env-switcher.deleteSavedUsername', () => deleteSavedUsername(context)), vscode.commands.registerCommand('dw-env-switcher.deleteSavedSandbox', () => deleteSavedSandbox(context)), vscode.commands.registerCommand('dw-env-switcher.exportSetup', () => exportSetup(context)), vscode.commands.registerCommand('dw-env-switcher.importSetup', () => importSetup(context)), vscode.commands.registerCommand('dw-env-switcher.switchCodeVersion', () => switchCurrentSandboxCodeVersion(context)), vscode.commands.registerCommand('dw-env-switcher.deleteSandboxFromView', (item) => deleteSandboxFromView(context, item)), vscode.commands.registerCommand('dwEnvSwitcherView.refresh', () => sandboxProvider.refresh()), vscode.commands.registerCommand('dw-env-switcher.addNewSandbox', () => detailedSandboxSelection(context)), vscode.commands.registerCommand('dw-env-switcher.changeCartridges', (item) => changeCartridges(context, item)), vscode.commands.registerCommand('dw-env-switcher.changeUser', (item) => changeUser(context, item)), vscode.commands.registerCommand('dw-env-switcher.sandboxActions', (item) => sandboxActions(context, item)), vscode.commands.registerCommand('dw-env-switcher.changeSavedPassword', () => changeSavedPassword(context)));
+    context.subscriptions.push(vscode.commands.registerCommand('dw-env-switcher.selectSandbox', () => simpleSandboxSelection(context)), vscode.commands.registerCommand('dw-env-switcher.selectSandboxWithDetails', (sandboxName) => detailedSandboxSelection(context, sandboxName)), vscode.commands.registerCommand('dw-env-switcher.deleteSavedUsername', () => deleteSavedUsername(context)), vscode.commands.registerCommand('dw-env-switcher.deleteSavedSandbox', () => deleteSavedSandbox(context)), vscode.commands.registerCommand('dw-env-switcher.exportSetup', () => exportSetup(context)), vscode.commands.registerCommand('dw-env-switcher.importSetup', () => importSetup(context)), vscode.commands.registerCommand('dw-env-switcher.switchCodeVersion', () => switchCurrentSandboxCodeVersion(context)), vscode.commands.registerCommand('dw-env-switcher.deleteSandboxFromView', (item) => deleteSandboxFromView(context, item)), vscode.commands.registerCommand('dwEnvSwitcherView.refresh', () => sandboxProvider.refresh()), vscode.commands.registerCommand('dw-env-switcher.addNewSandbox', () => detailedSandboxSelection(context)), vscode.commands.registerCommand('dw-env-switcher.changeCartridges', (item) => changeCartridges(context, item)), vscode.commands.registerCommand('dw-env-switcher.changeUser', (item) => changeUser(context, item)), vscode.commands.registerCommand('dw-env-switcher.sandboxActions', (item) => sandboxActions(context, item)), vscode.commands.registerCommand('dw-env-switcher.changeSavedPassword', () => changeSavedPassword(context)), vscode.commands.registerCommand('dw-env-switcher.activateSandbox', (sandbox) => activateSandbox(sandbox)));
 }
 function deactivate() { }

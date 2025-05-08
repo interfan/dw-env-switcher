@@ -14,7 +14,9 @@ Easily manage multiple sandbox environments, securely store credentials, dynamic
 ✅ **NEW:**  
 - "Switch Current Sandbox Code Version" command for fast version switching.  
 - "Change Saved Password" command to easily update passwords globally and for all sandboxes.  
-- **Activity Bar View with sandbox management actions (edit, change cartridges/user, delete)**
+- **Activity Bar View with sandbox management actions (edit, change cartridges/user, delete)**  
+- **Clickable sandbox entries to activate sandbox directly from the view**  
+- **Visual indicator (green check ✅ for active, red circle 🔴 for inactive sandboxes)**
 
 ---
 
@@ -30,6 +32,7 @@ Easily manage multiple sandbox environments, securely store credentials, dynamic
 - ✅ **Switch current sandbox code version without changing other settings.**
 - 🔑 **Change saved password for users globally and update all sandboxes and active sandbox.**
 - 📌 **Activity Bar view for easy sandbox access and editing.**
+- 🔴 ✅ **Easily activate sandboxes by clicking them in the view (red = inactive, green = active)**.
 - 🐞 Seamless integration with Prophet Debugger setups.
 
 ---
@@ -40,14 +43,16 @@ DW Environment Switcher adds a new icon to the Activity Bar.
 
 From the **Sandboxes view**, you can:
 
-- 📌 **Select a sandbox** (double-click to activate).
+- ✅ **See which sandbox is active (green check icon).**
+- 🔴 **See inactive sandboxes (red circle icon with "Activate" label).**
+- 📌 **Activate sandbox by clicking directly on it in the list.**
 - ✏️ **Edit sandbox details** (right-click -> `Sandbox Actions` -> Edit).
 - 🎛️ **Change cartridges** (right-click -> `Change Cartridges`).
 - 👤 **Change user credentials** (right-click -> `Change User`).
 - 🔑 **Change saved password** (use command palette `Change Saved Password`).
 - ❌ **Delete sandbox** (right-click -> `Delete Sandbox`).
 
-This makes sandbox management even faster — no need to use command palette for most operations.
+This makes sandbox management fast and intuitive — no need to use command palette for most operations.
 
 ---
 
@@ -70,6 +75,7 @@ This makes sandbox management even faster — no need to use command palette for
 2. Open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P` on Mac) or use the **Activity Bar view**.
 3. Use sandbox commands or right-click on sandboxes in the view to manage them.
 4. Select or create sandbox environments, choose cartridges, or switch code versions easily.
+5. **Click on any inactive sandbox (red circle 🔴) to instantly activate it.**
 
 ### Switching Code Version
 
