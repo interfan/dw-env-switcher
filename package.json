@@ -2,7 +2,7 @@
     "name": "dw-env-switcher",
     "displayName": "DW Environment Switcher",
     "description": "Easily switch and manage Salesforce sandbox environments, store credentials securely, and export/import setups.",
-    "version": "0.1.9",
+    "version": "0.1.10",
     "publisher": "IvayloTrepetanov",
     "repository": {
         "type": "git",
