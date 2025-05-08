@@ -11,7 +11,9 @@ This extension is designed to improve the developer workflow when working with *
 
 Easily manage multiple sandbox environments, securely store credentials, dynamically select cartridges, and export or import sandbox configurations between different workstations.
 
-✅ **NEW:** Now includes "Switch Current Sandbox Code Version" command for fast version switching!
+✅ **NEW:**  
+- "Switch Current Sandbox Code Version" command for fast version switching.  
+- **Activity Bar View with sandbox management actions (edit, change cartridges/user, delete)**
 
 ---
 
@@ -25,7 +27,24 @@ Easily manage multiple sandbox environments, securely store credentials, dynamic
 - 🚮 Delete saved users and sandboxes easily.
 - 📥 Import and 📤 export sandbox setups with ease.
 - ✅ **Switch current sandbox code version without changing other settings.**
+- 📌 **Activity Bar view for easy sandbox access and editing.**
 - 🐞 Seamless integration with Prophet Debugger setups.
+
+---
+
+## Activity Bar View
+
+DW Environment Switcher adds a new icon to the Activity Bar.
+
+From the **Sandboxes view**, you can:
+
+- 📌 **Select a sandbox** (double-click to activate).
+- ✏️ **Edit sandbox details** (right-click -> `Sandbox Actions` -> Edit).
+- 🎛️ **Change cartridges** (right-click -> `Change Cartridges`).
+- 👤 **Change user credentials** (right-click -> `Change User`).
+- ❌ **Delete sandbox** (right-click -> `Delete Sandbox`).
+
+This makes sandbox management even faster — no need to use command palette for most operations.
 
 ---
 
@@ -44,8 +63,8 @@ Easily manage multiple sandbox environments, securely store credentials, dynamic
 ## How to Use
 
 1. Open your Commerce Cloud project in VS Code.
-2. Open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P` on Mac).
-3. Search for **DW Environment Switcher** commands.
+2. Open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P` on Mac) or use the **Activity Bar view**.
+3. Use sandbox commands or right-click on sandboxes in the view to manage them.
 4. Select or create sandbox environments, choose cartridges, or switch code versions easily.
 
 ### Switching Code Version
@@ -99,4 +118,4 @@ All credentials and sandbox environments are stored securely in VS Code global s
 
 ## License
 
-MIT © 2024 Ivaylo Trepetanov
+MIT © 2025 Ivaylo Trepetanov

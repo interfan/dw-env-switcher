@@ -33,6 +33,19 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.SandboxItem = exports.SandboxTreeDataProvider = void 0;
+exports.pickOrEnter = pickOrEnter;
+exports.simpleSandboxSelection = simpleSandboxSelection;
+exports.detailedSandboxSelection = detailedSandboxSelection;
+exports.exportSetup = exportSetup;
+exports.importSetup = importSetup;
+exports.deleteSavedUsername = deleteSavedUsername;
+exports.deleteSavedSandbox = deleteSavedSandbox;
+exports.deleteSandboxFromView = deleteSandboxFromView;
+exports.changeCartridges = changeCartridges;
+exports.switchCurrentSandboxCodeVersion = switchCurrentSandboxCodeVersion;
+exports.changeUser = changeUser;
+exports.sandboxActions = sandboxActions;
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
@@ -40,24 +53,28 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const archiver = require('archiver');
 const unzipper = require('unzipper');
-function activate(context) {
-    const sandboxProvider = new SandboxTreeDataProvider(context);
-    vscode.window.registerTreeDataProvider('dwEnvSwitcherView', sandboxProvider);
-    context.subscriptions.push(vscode.commands.registerCommand('dw-env-switcher.selectSandbox', () => simpleSandboxSelection(context)), vscode.commands.registerCommand('dw-env-switcher.selectSandboxWithDetails', (sandboxName) => detailedSandboxSelection(context, sandboxName)), vscode.commands.registerCommand('dw-env-switcher.deleteSavedUsername', () => deleteSavedUsername(context)), vscode.commands.registerCommand('dw-env-switcher.deleteSavedSandbox', () => deleteSavedSandbox(context)), vscode.commands.registerCommand('dw-env-switcher.exportSetup', () => exportSetup(context)), vscode.commands.registerCommand('dw-env-switcher.importSetup', () => importSetup(context)), vscode.commands.registerCommand('dw-env-switcher.switchCodeVersion', () => switchCurrentSandboxCodeVersion(context)), vscode.commands.registerCommand('dw-env-switcher.deleteSandboxFromView', (item) => deleteSandboxFromView(context, item)), vscode.commands.registerCommand('dwEnvSwitcherView.refresh', () => sandboxProvider.refresh()), vscode.commands.registerCommand('dw-env-switcher.addNewSandbox', () => detailedSandboxSelection(context)), vscode.commands.registerCommand('dw-env-switcher.changeCartridges', (item) => changeCartridges(context, item)), vscode.commands.registerCommand('dw-env-switcher.changeUser', (item) => changeUser(context, item)), vscode.commands.registerCommand('dw-env-switcher.sandboxActions', (item) => sandboxActions(context, item)));
+async function pickOrEnter(label, previous = [], currentValue) {
+    const options = ['➕ Enter New', ...previous];
+    const selected = await vscode.window.showQuickPick(options, { placeHolder: currentValue ? `Current: ${currentValue}` : undefined });
+    if (!selected)
+        return;
+    if (selected === '➕ Enter New') {
+        return await vscode.window.showInputBox({ prompt: `Enter ${label}`, value: currentValue });
+    }
+    return selected;
 }
 function getCartridgeFolderNames(directories) {
     return directories.map(dir => path.basename(dir));
 }
 async function getCartridgesFromDirectory(workspacePath) {
-    if (!fs.existsSync(workspacePath))
-        return [];
     const validDirectories = [];
     function scan(dirPath) {
         const entries = fs.readdirSync(dirPath, { withFileTypes: true });
         for (const entry of entries) {
             const fullPath = path.join(dirPath, entry.name);
             if (entry.isDirectory()) {
-                if (fs.existsSync(path.join(fullPath, '.project')) && (fs.existsSync(path.join(fullPath, 'cartridges')) || fs.existsSync(path.join(fullPath, 'cartridge')))) {
+                if (fs.existsSync(path.join(fullPath, '.project')) &&
+                    (fs.existsSync(path.join(fullPath, 'cartridges')) || fs.existsSync(path.join(fullPath, 'cartridge')))) {
                     validDirectories.push(fullPath);
                 }
                 scan(fullPath);
@@ -112,21 +129,38 @@ async function detailedSandboxSelection(context, sandboxName) {
         fs.writeFileSync(envPath, JSON.stringify({ sandboxes: [] }, null, 4));
     const envs = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
     const existing = sandboxName ? envs.sandboxes.find((sb) => sb.name === sandboxName) : undefined;
-    const hostname = await vscode.window.showInputBox({ prompt: 'Hostname', value: existing === null || existing === void 0 ? void 0 : existing.hostname });
+    // Add existing hostname to global hostnames if missing
+    if (existing === null || existing === void 0 ? void 0 : existing.hostname) {
+        const hostnames = context.globalState.get('dw-hostnames') || [];
+        if (!hostnames.includes(existing.hostname)) {
+            hostnames.push(existing.hostname);
+            await context.globalState.update('dw-hostnames', hostnames);
+        }
+    }
+    const hostnames = context.globalState.get('dw-hostnames') || [];
+    const hostname = await pickOrEnter('hostname', hostnames, existing === null || existing === void 0 ? void 0 : existing.hostname);
     if (!hostname)
         return;
-    const username = await vscode.window.showInputBox({ prompt: 'Username', value: existing === null || existing === void 0 ? void 0 : existing.username });
+    if (!hostnames.includes(hostname)) {
+        hostnames.push(hostname);
+        await context.globalState.update('dw-hostnames', hostnames);
+    }
+    const usernames = context.globalState.get('dw-usernames') || [];
+    const username = await pickOrEnter('username', usernames, existing === null || existing === void 0 ? void 0 : existing.username);
     const password = await vscode.window.showInputBox({ prompt: 'Password', value: existing === null || existing === void 0 ? void 0 : existing.password, password: true });
-    const codeVersion = await vscode.window.showInputBox({ prompt: 'Code version', value: existing === null || existing === void 0 ? void 0 : existing['code-version'] });
-    if (!codeVersion) {
-        vscode.window.showErrorMessage('You must enter a code version.');
+    const versions = context.globalState.get('dw-codeversions') || [];
+    const codeVersion = await pickOrEnter('code version', versions, existing === null || existing === void 0 ? void 0 : existing['code-version']);
+    if (!codeVersion)
         return;
+    if (!versions.includes(codeVersion)) {
+        versions.push(codeVersion);
+        await context.globalState.update('dw-codeversions', versions);
     }
     const name = sandboxName || await vscode.window.showInputBox({ prompt: 'Sandbox name', value: existing === null || existing === void 0 ? void 0 : existing.name });
     if (!name)
         return;
     const chooseCartridges = await vscode.window.showQuickPick(['Yes', 'No'], { placeHolder: 'Select cartridges?' }) === 'Yes';
-    const cartridges = chooseCartridges ? await vscode.window.showQuickPick(await getCartridgesFromDirectory(workspace).then(getCartridgeFolderNames), { canPickMany: true }) : [];
+    const cartridges = chooseCartridges ? await vscode.window.showQuickPick(getCartridgeFolderNames(await getCartridgesFromDirectory(workspace)), { canPickMany: true }) : [];
     const sandbox = { name, hostname, username, password, "code-version": codeVersion, cartridges };
     envs.sandboxes = envs.sandboxes.filter((sb) => sb.name !== name);
     envs.sandboxes.push(sandbox);
@@ -135,39 +169,41 @@ async function detailedSandboxSelection(context, sandboxName) {
     vscode.window.showInformationMessage(`Saved sandbox ${name}`);
     vscode.commands.executeCommand('dwEnvSwitcherView.refresh');
 }
-async function deleteSavedUsername(context) {
-    const usernames = context.globalState.get('dw-usernames') || [];
-    const username = await vscode.window.showQuickPick(usernames);
-    if (!username)
-        return;
-    await context.globalState.update('dw-usernames', usernames.filter(u => u !== username));
-    await context.globalState.update(`dw-password-${username}`, undefined);
+class SandboxTreeDataProvider {
+    constructor(context) {
+        this.context = context;
+        this._onDidChangeTreeData = new vscode.EventEmitter();
+        this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+    }
+    refresh() {
+        this._onDidChangeTreeData.fire();
+    }
+    getTreeItem(element) {
+        return element;
+    }
+    async getChildren() {
+        var _a, _b;
+        const fs = require('fs');
+        const path = require('path');
+        const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
+        if (!workspace)
+            return [];
+        const envPath = path.join(workspace, 'dw-envs.json');
+        if (!fs.existsSync(envPath))
+            return [];
+        const sandboxes = JSON.parse(fs.readFileSync(envPath, 'utf-8')).sandboxes;
+        return sandboxes.map((sb) => new SandboxItem(sb));
+    }
 }
-async function deleteSavedSandbox(context) {
-    var _a, _b;
-    const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
-    if (!workspace)
-        return;
-    const envPath = path.join(workspace, 'dw-envs.json');
-    const envs = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
-    const sandbox = await vscode.window.showQuickPick(envs.sandboxes.map((sb) => sb.name));
-    if (!sandbox)
-        return;
-    envs.sandboxes = envs.sandboxes.filter((sb) => sb.name !== sandbox);
-    fs.writeFileSync(envPath, JSON.stringify(envs, null, 4));
-    vscode.commands.executeCommand('dwEnvSwitcherView.refresh');
+exports.SandboxTreeDataProvider = SandboxTreeDataProvider;
+class SandboxItem extends vscode.TreeItem {
+    constructor(sandbox) {
+        super(sandbox.name, vscode.TreeItemCollapsibleState.None);
+        this.sandbox = sandbox;
+        this.contextValue = 'sandbox';
+    }
 }
-async function deleteSandboxFromView(context, item) {
-    var _a, _b;
-    const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
-    if (!workspace)
-        return;
-    const envPath = path.join(workspace, 'dw-envs.json');
-    const envs = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
-    envs.sandboxes = envs.sandboxes.filter((sb) => sb.name !== item.sandbox.name);
-    fs.writeFileSync(envPath, JSON.stringify(envs, null, 4));
-    vscode.commands.executeCommand('dwEnvSwitcherView.refresh');
-}
+exports.SandboxItem = SandboxItem;
 async function exportSetup(context) {
     var _a, _b;
     const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
@@ -213,6 +249,58 @@ async function importSetup(context) {
         }
     });
 }
+async function deleteSavedUsername(context) {
+    const usernames = context.globalState.get('dw-usernames') || [];
+    const username = await vscode.window.showQuickPick(usernames);
+    if (!username)
+        return;
+    await context.globalState.update('dw-usernames', usernames.filter(u => u !== username));
+    await context.globalState.update(`dw-password-${username}`, undefined);
+}
+async function deleteSavedSandbox(context) {
+    var _a, _b;
+    const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
+    if (!workspace)
+        return;
+    const envPath = path.join(workspace, 'dw-envs.json');
+    const envs = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
+    const sandbox = await vscode.window.showQuickPick(envs.sandboxes.map((sb) => sb.name));
+    if (!sandbox)
+        return;
+    envs.sandboxes = envs.sandboxes.filter((sb) => sb.name !== sandbox);
+    fs.writeFileSync(envPath, JSON.stringify(envs, null, 4));
+    vscode.commands.executeCommand('dwEnvSwitcherView.refresh');
+}
+async function deleteSandboxFromView(context, item) {
+    var _a, _b;
+    const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
+    if (!workspace)
+        return;
+    const envPath = path.join(workspace, 'dw-envs.json');
+    const envs = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
+    envs.sandboxes = envs.sandboxes.filter((sb) => sb.name !== item.sandbox.name);
+    fs.writeFileSync(envPath, JSON.stringify(envs, null, 4));
+    vscode.commands.executeCommand('dwEnvSwitcherView.refresh');
+}
+async function changeCartridges(context, item) {
+    var _a, _b;
+    const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
+    if (!workspace)
+        return;
+    const envPath = path.join(workspace, 'dw-envs.json');
+    const envs = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
+    const dwPath = path.join(workspace, 'dw.json');
+    const available = await getCartridgesFromDirectory(workspace);
+    const selected = await vscode.window.showQuickPick(getCartridgeFolderNames(available), { canPickMany: true });
+    const sandbox = envs.sandboxes.find((sb) => sb.name === item.sandbox.name);
+    if (sandbox) {
+        sandbox.cartridges = selected;
+        fs.writeFileSync(envPath, JSON.stringify(envs, null, 4));
+        fs.writeFileSync(dwPath, JSON.stringify(sandbox, null, 4));
+        vscode.window.showInformationMessage(`Updated cartridges for ${sandbox.name}`);
+        vscode.commands.executeCommand('dwEnvSwitcherView.refresh');
+    }
+}
 async function switchCurrentSandboxCodeVersion(context) {
     var _a, _b;
     const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
@@ -244,56 +332,6 @@ async function switchCurrentSandboxCodeVersion(context) {
         }
     }
 }
-class SandboxTreeDataProvider {
-    constructor(context) {
-        this.context = context;
-        this._onDidChangeTreeData = new vscode.EventEmitter();
-        this.onDidChangeTreeData = this._onDidChangeTreeData.event;
-    }
-    refresh() {
-        this._onDidChangeTreeData.fire();
-    }
-    getTreeItem(element) {
-        return element;
-    }
-    async getChildren() {
-        var _a, _b;
-        const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
-        if (!workspace)
-            return [];
-        const envPath = path.join(workspace, 'dw-envs.json');
-        if (!fs.existsSync(envPath))
-            return [];
-        const sandboxes = JSON.parse(fs.readFileSync(envPath, 'utf-8')).sandboxes;
-        return sandboxes.map((sb) => new SandboxItem(sb));
-    }
-}
-class SandboxItem extends vscode.TreeItem {
-    constructor(sandbox) {
-        super(sandbox.name, vscode.TreeItemCollapsibleState.None);
-        this.sandbox = sandbox;
-        this.contextValue = 'sandbox';
-    }
-}
-// Handler for changing cartridges
-async function changeCartridges(context, item) {
-    var _a, _b;
-    const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
-    if (!workspace)
-        return;
-    const envPath = path.join(workspace, 'dw-envs.json');
-    const envs = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
-    const available = await getCartridgesFromDirectory(workspace);
-    const selected = await vscode.window.showQuickPick(getCartridgeFolderNames(available), { canPickMany: true });
-    const sandbox = envs.sandboxes.find((sb) => sb.name === item.sandbox.name);
-    if (sandbox) {
-        sandbox.cartridges = selected;
-        fs.writeFileSync(envPath, JSON.stringify(envs, null, 4));
-        vscode.window.showInformationMessage(`Updated cartridges for ${sandbox.name}`);
-        vscode.commands.executeCommand('dwEnvSwitcherView.refresh');
-    }
-}
-// Handler for changing user
 async function changeUser(context, item) {
     var _a, _b;
     const workspace = (_b = (_a = vscode.workspace.workspaceFolders) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.uri.fsPath;
@@ -301,13 +339,22 @@ async function changeUser(context, item) {
         return;
     const envPath = path.join(workspace, 'dw-envs.json');
     const envs = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
-    const username = await vscode.window.showInputBox({ prompt: 'Enter new username', value: item.sandbox.username });
+    const dwPath = path.join(workspace, 'dw.json');
+    const usernames = context.globalState.get('dw-usernames') || [];
+    const username = await pickOrEnter('username', usernames, item.sandbox.username);
+    if (!username)
+        return;
+    if (!usernames.includes(username)) {
+        usernames.push(username);
+        await context.globalState.update('dw-usernames', usernames);
+    }
     const password = await vscode.window.showInputBox({ prompt: 'Enter new password', password: true });
     const sandbox = envs.sandboxes.find((sb) => sb.name === item.sandbox.name);
     if (sandbox) {
         sandbox.username = username;
         sandbox.password = password;
         fs.writeFileSync(envPath, JSON.stringify(envs, null, 4));
+        fs.writeFileSync(dwPath, JSON.stringify(sandbox, null, 4));
         vscode.window.showInformationMessage(`Updated user for ${sandbox.name}`);
         vscode.commands.executeCommand('dwEnvSwitcherView.refresh');
     }
@@ -324,20 +371,25 @@ async function sandboxActions(context, item) {
         return;
     switch (action) {
         case 'Edit Sandbox':
-            detailedSandboxSelection(context, item.sandbox.name);
+            vscode.commands.executeCommand('dw-env-switcher.selectSandboxWithDetails', item.sandbox.name);
             break;
         case 'Change Cartridges':
-            changeCartridges(context, item);
+            vscode.commands.executeCommand('dw-env-switcher.changeCartridges', item);
             break;
         case 'Change Code Version':
-            switchCurrentSandboxCodeVersion(context);
+            await switchCurrentSandboxCodeVersion(context);
             break;
         case 'Change User':
-            changeUser(context, item);
+            await changeUser(context, item);
             break;
         case 'Delete Sandbox':
-            deleteSandboxFromView(context, item);
+            vscode.commands.executeCommand('dw-env-switcher.deleteSandboxFromView', item);
             break;
     }
+}
+function activate(context) {
+    const sandboxProvider = new SandboxTreeDataProvider(context);
+    vscode.window.registerTreeDataProvider('dwEnvSwitcherView', sandboxProvider);
+    context.subscriptions.push(vscode.commands.registerCommand('dw-env-switcher.selectSandbox', () => simpleSandboxSelection(context)), vscode.commands.registerCommand('dw-env-switcher.selectSandboxWithDetails', (sandboxName) => detailedSandboxSelection(context, sandboxName)), vscode.commands.registerCommand('dw-env-switcher.deleteSavedUsername', () => deleteSavedUsername(context)), vscode.commands.registerCommand('dw-env-switcher.deleteSavedSandbox', () => deleteSavedSandbox(context)), vscode.commands.registerCommand('dw-env-switcher.exportSetup', () => exportSetup(context)), vscode.commands.registerCommand('dw-env-switcher.importSetup', () => importSetup(context)), vscode.commands.registerCommand('dw-env-switcher.switchCodeVersion', () => switchCurrentSandboxCodeVersion(context)), vscode.commands.registerCommand('dw-env-switcher.deleteSandboxFromView', (item) => deleteSandboxFromView(context, item)), vscode.commands.registerCommand('dwEnvSwitcherView.refresh', () => sandboxProvider.refresh()), vscode.commands.registerCommand('dw-env-switcher.addNewSandbox', () => detailedSandboxSelection(context)), vscode.commands.registerCommand('dw-env-switcher.changeCartridges', (item) => changeCartridges(context, item)), vscode.commands.registerCommand('dw-env-switcher.changeUser', (item) => changeUser(context, item)), vscode.commands.registerCommand('dw-env-switcher.sandboxActions', (item) => sandboxActions(context, item)));
 }
 function deactivate() { }
