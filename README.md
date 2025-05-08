@@ -13,6 +13,7 @@ Easily manage multiple sandbox environments, securely store credentials, dynamic
 
 ✅ **NEW:**  
 - "Switch Current Sandbox Code Version" command for fast version switching.  
+- "Change Saved Password" command to easily update passwords globally and for all sandboxes.  
 - **Activity Bar View with sandbox management actions (edit, change cartridges/user, delete)**
 
 ---
@@ -27,6 +28,7 @@ Easily manage multiple sandbox environments, securely store credentials, dynamic
 - 🚮 Delete saved users and sandboxes easily.
 - 📥 Import and 📤 export sandbox setups with ease.
 - ✅ **Switch current sandbox code version without changing other settings.**
+- 🔑 **Change saved password for users globally and update all sandboxes and active sandbox.**
 - 📌 **Activity Bar view for easy sandbox access and editing.**
 - 🐞 Seamless integration with Prophet Debugger setups.
 
@@ -42,6 +44,7 @@ From the **Sandboxes view**, you can:
 - ✏️ **Edit sandbox details** (right-click -> `Sandbox Actions` -> Edit).
 - 🎛️ **Change cartridges** (right-click -> `Change Cartridges`).
 - 👤 **Change user credentials** (right-click -> `Change User`).
+- 🔑 **Change saved password** (use command palette `Change Saved Password`).
 - ❌ **Delete sandbox** (right-click -> `Delete Sandbox`).
 
 This makes sandbox management even faster — no need to use command palette for most operations.
@@ -53,6 +56,7 @@ This makes sandbox management even faster — no need to use command palette for
 - `Select Sandbox`: Select an environment from `dw-envs.json`.
 - `Select Sandbox with Details`: Create a sandbox config manually (hostname, username, password, code version, cartridges).
 - `Switch Current Sandbox Code Version`: Change only the `code-version` of the current sandbox.
+- `Change Saved Password`: Update saved passwords globally and in all related sandboxes.
 - `Delete Saved Username`: Remove a saved username and password.
 - `Delete Saved Sandbox`: Remove a saved sandbox from `dw-envs.json`.
 - `Export Sandbox Setup`: Backup `dw.json`, `dw-envs.json` and global state to a zip file.
@@ -75,6 +79,16 @@ Use `Switch Current Sandbox Code Version` command to:
 - Automatically update `dw-envs.json` if the sandbox exists there.
 
 No need to reselect hostname or username — just pick or enter the new code version.
+
+### Change Saved Password
+
+Use `Change Saved Password` command to:
+
+- Select a saved username from the list.
+- Enter a new password securely.
+- Update the password globally and in all sandboxes (`dw-envs.json` and `dw.json` if active sandbox matches).
+
+This is useful when passwords expire or need to be rotated.
 
 ---
 

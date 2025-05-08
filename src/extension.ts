@@ -355,6 +355,60 @@ export async function changeUser(context: vscode.ExtensionContext, item: Sandbox
     }
 }
 
+export async function changeSavedPassword(context: vscode.ExtensionContext) {
+    const usernames = context.globalState.get<string[]>('dw-usernames') || [];
+    if (usernames.length === 0) {
+        vscode.window.showInformationMessage('No saved usernames found.');
+        return;
+    }
+
+    const username = await vscode.window.showQuickPick(usernames, { placeHolder: 'Select username to update password' });
+    if (!username) return;
+
+    const newPassword = await vscode.window.showInputBox({ prompt: `Enter new password for ${username}`, password: true });
+    if (!newPassword) return;
+
+    // Update global password
+    await context.globalState.update(`dw-password-${username}`, newPassword);
+
+    const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!workspace) {
+        vscode.window.showInformationMessage('Password updated in global state only.');
+        return;
+    }
+
+    const envPath = path.join(workspace, 'dw-envs.json');
+    const dwPath = path.join(workspace, 'dw.json');
+
+    // Update dw-envs.json
+    if (fs.existsSync(envPath)) {
+        const envs = JSON.parse(fs.readFileSync(envPath, 'utf-8'));
+        let changed = false;
+
+        for (const sandbox of envs.sandboxes) {
+            if (sandbox.username === username) {
+                sandbox.password = newPassword;
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            fs.writeFileSync(envPath, JSON.stringify(envs, null, 4));
+        }
+    }
+
+    // Update dw.json if active username matches
+    if (fs.existsSync(dwPath)) {
+        const current = JSON.parse(fs.readFileSync(dwPath, 'utf-8'));
+        if (current.username === username) {
+            current.password = newPassword;
+            fs.writeFileSync(dwPath, JSON.stringify(current, null, 4));
+        }
+    }
+
+    vscode.window.showInformationMessage(`Password updated for user "${username}".`);
+}
+
 export async function sandboxActions(context: vscode.ExtensionContext, item: SandboxItem) {
     const action = await vscode.window.showQuickPick([
         'Edit Sandbox',
@@ -402,7 +456,9 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('dw-env-switcher.addNewSandbox', () => detailedSandboxSelection(context)),
         vscode.commands.registerCommand('dw-env-switcher.changeCartridges', (item: SandboxItem) => changeCartridges(context, item)),
         vscode.commands.registerCommand('dw-env-switcher.changeUser', (item: SandboxItem) => changeUser(context, item)),
-        vscode.commands.registerCommand('dw-env-switcher.sandboxActions', (item: SandboxItem) => sandboxActions(context, item))
+        vscode.commands.registerCommand('dw-env-switcher.sandboxActions', (item: SandboxItem) => sandboxActions(context, item)),
+        vscode.commands.registerCommand('dw-env-switcher.changeSavedPassword', () => changeSavedPassword(context)),
+
     );
 }
 
