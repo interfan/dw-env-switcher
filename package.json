@@ -19,12 +19,13 @@
     "Debuggers"
   ],
   "activationEvents": [
-    "onCommand:dw-env-switcher.selectSandbox",
-    "onCommand:dw-env-switcher.selectSandboxWithDetails",
-    "onCommand:dw-env-switcher.deleteSavedUsername",
-    "onCommand:dw-env-switcher.deleteSavedSandbox",
-    "onCommand:dw-env-switcher.exportSetup",
-    "onCommand:dw-env-switcher.importSetup"
+      "onCommand:dw-env-switcher.selectSandbox",
+      "onCommand:dw-env-switcher.selectSandboxWithDetails",
+      "onCommand:dw-env-switcher.deleteSavedUsername",
+      "onCommand:dw-env-switcher.deleteSavedSandbox",
+      "onCommand:dw-env-switcher.exportSetup",
+      "onCommand:dw-env-switcher.importSetup",
+      "onCommand:dw-env-switcher.switchCodeVersion"
   ],
   "contributes": {
     "commands": [
@@ -51,6 +52,10 @@
       {
         "command": "dw-env-switcher.importSetup",
         "title": "Import Sandbox Setup"
+      },
+      {
+        "command": "dw-env-switcher.switchCodeVersion",
+        "title": "Switch Current Sandbox Code Version"
       }
     ]
   },

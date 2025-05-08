@@ -37,8 +37,13 @@ export function activate(context: vscode.ExtensionContext) {
         await importSetup(context);
     });
 
+    let disposableSwitchCodeVersion = vscode.commands.registerCommand('dw-env-switcher.switchCodeVersion', async () => {
+        await switchCurrentSandboxCodeVersion(context);
+    });
+
     context.subscriptions.push(disposableSimple);
     context.subscriptions.push(disposableAdvanced);
+    context.subscriptions.push(disposableSwitchCodeVersion);
     context.subscriptions.push(disposableDeleteUser);
     context.subscriptions.push(disposableDeleteSandbox);
     context.subscriptions.push(disposableExport);
@@ -590,6 +595,77 @@ async function importSetup(context: vscode.ExtensionContext) {
             });
     } catch (error) {
         vscode.window.showErrorMessage('Error importing setup: ' + (error as Error).message);
+    }
+}
+
+// Add this function in your extension file
+
+async function switchCurrentSandboxCodeVersion(context: vscode.ExtensionContext) {
+    try {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+            vscode.window.showErrorMessage('No workspace is open.');
+            return;
+        }
+
+        const workspacePath = workspaceFolders[0].uri.fsPath;
+        const dwFilePath = path.join(workspacePath, 'dw.json');
+        const envFilePath = path.join(workspacePath, 'dw-envs.json');
+
+        if (!fs.existsSync(dwFilePath)) {
+            vscode.window.showErrorMessage('dw.json not found in workspace.');
+            return;
+        }
+
+        const dwContent = JSON.parse(fs.readFileSync(dwFilePath, 'utf-8'));
+        const currentCodeVersion = dwContent['code-version'];
+
+        const savedCodeVersions = context.globalState.get<string[]>('dw-codeversions') || [];
+
+        const codeVersionOptions = ['➕ Enter New', ...savedCodeVersions];
+        let selectedCodeVersion = await vscode.window.showQuickPick(codeVersionOptions, {
+            placeHolder: `Current Code Version: ${currentCodeVersion}. Select or enter a new code version.`,
+        });
+
+        if (!selectedCodeVersion) return;
+
+        if (selectedCodeVersion === '➕ Enter New') {
+            selectedCodeVersion = await vscode.window.showInputBox({
+                prompt: 'Enter new code version',
+                ignoreFocusOut: true
+            });
+
+            if (!selectedCodeVersion) return;
+
+            if (!savedCodeVersions.includes(selectedCodeVersion)) {
+                savedCodeVersions.push(selectedCodeVersion);
+                await context.globalState.update('dw-codeversions', savedCodeVersions);
+            }
+        }
+
+        // Update dw.json
+        dwContent['code-version'] = selectedCodeVersion;
+        fs.writeFileSync(dwFilePath, JSON.stringify(dwContent, null, 4));
+        vscode.window.showInformationMessage(`dw.json updated with new code version: ${selectedCodeVersion}`);
+
+        // Update dw-envs.json if sandbox matches
+        if (fs.existsSync(envFilePath)) {
+            const envsContent = JSON.parse(fs.readFileSync(envFilePath, 'utf-8'));
+
+            const sandboxToUpdate = envsContent.sandboxes.find((sb: SandboxConfig) =>
+                sb.hostname === dwContent.hostname &&
+                sb.username === dwContent.username
+            );
+
+            if (sandboxToUpdate) {
+                sandboxToUpdate['code-version'] = selectedCodeVersion;
+                fs.writeFileSync(envFilePath, JSON.stringify(envsContent, null, 4));
+                vscode.window.showInformationMessage(`dw-envs.json updated with new code version.`);
+            }
+        }
+
+    } catch (error) {
+        vscode.window.showErrorMessage('Error switching code version: ' + (error as Error).message);
     }
 }
 
