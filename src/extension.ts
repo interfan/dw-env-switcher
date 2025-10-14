@@ -478,12 +478,37 @@ export async function changeSavedPassword(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage(`Password updated for user "${username}".`);
 }
 
+async function setProphetUploadEnabled(enabled: boolean) {
+  const wsFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!wsFolder) {
+    vscode.window.showErrorMessage('No workspace is open.');
+    return;
+  }
+  // Flip Prophet’s uploader flag at workspace scope
+  const config = vscode.workspace.getConfiguration(undefined, wsFolder.uri);
+  await config.update('extension.prophet.upload.enabled', enabled, vscode.ConfigurationTarget.Workspace);
+
+  vscode.window.showInformationMessage(
+    `Prophet upload ${enabled ? 'ENABLED' : 'DISABLED'} for this workspace.`
+  );
+}
+
+async function enableProphetUpload() {
+  await setProphetUploadEnabled(true);
+}
+
+async function disableProphetUpload() {
+  await setProphetUploadEnabled(false);
+}
+
 export async function sandboxActions(context: vscode.ExtensionContext, item: SandboxItem) {
     const action = await vscode.window.showQuickPick([
         'Edit Sandbox',
         'Change Cartridges',
         'Change Code Version',
         'Change User',
+        'Enable Upload (Prophet)',
+        'Disable Upload (Prophet)',
         'Delete Sandbox'
     ], { placeHolder: `Select action for ${item.sandbox.name}` });
 
@@ -501,6 +526,12 @@ export async function sandboxActions(context: vscode.ExtensionContext, item: San
             break;
         case 'Change User':
             await changeUser(context, item);
+            break;
+        case 'Enable Upload (Prophet)':
+            await enableProphetUpload();
+            break;
+        case 'Disable Upload (Prophet)':
+            await disableProphetUpload();
             break;
         case 'Delete Sandbox':
             vscode.commands.executeCommand('dw-env-switcher.deleteSandboxFromView', item);
@@ -541,8 +572,9 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('dw-env-switcher.changeUser', (item: SandboxItem) => changeUser(context, item)),
         vscode.commands.registerCommand('dw-env-switcher.sandboxActions', (item: SandboxItem) => sandboxActions(context, item)),
         vscode.commands.registerCommand('dw-env-switcher.changeSavedPassword', () => changeSavedPassword(context)),
-        vscode.commands.registerCommand('dw-env-switcher.activateSandbox', (sandbox: SandboxConfig) => activateSandbox(sandbox))
-
+        vscode.commands.registerCommand('dw-env-switcher.activateSandbox', (sandbox: SandboxConfig) => activateSandbox(sandbox)),
+        vscode.commands.registerCommand('dw-env-switcher.enableProphetUpload', () => enableProphetUpload()),
+        vscode.commands.registerCommand('dw-env-switcher.disableProphetUpload', () => disableProphetUpload())
     );
 }
 

@@ -42,7 +42,9 @@
         "onCommand:dw-env-switcher.changeCartridges",
         "onCommand:dw-env-switcher.changeUser",
         "onCommand:dw-env-switcher.sandboxActions",
-        "onCommand:dw-env-switcher.changeSavedPassword"
+        "onCommand:dw-env-switcher.changeSavedPassword",
+        "onCommand:dw-env-switcher.enableProphetUpload",
+        "onCommand:dw-env-switcher.disableProphetUpload"
     ],
     "contributes": {
         "menus": {
@@ -134,6 +136,14 @@
             {
                 "command": "dw-env-switcher.changeSavedPassword",
                 "title": "Change Saved Password"
+            },
+            {
+                "command": "dw-env-switcher.enableProphetUpload",
+                "title": "DW Env Switcher: Enable Upload (Prophet)"
+            },
+            {
+                "command": "dw-env-switcher.disableProphetUpload",
+                "title": "DW Env Switcher: Disable Upload (Prophet)"
             }
         ]
     },
